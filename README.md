@@ -1,19 +1,7 @@
-# This is my package laravel-everifin
+# Laravel Everifin Payment Gateway
+![image](https://github.com/user-attachments/assets/cbcfec66-b1d6-48c6-81d0-a0eb1ff39406)
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/ravols/laravel-everifin.svg?style=flat-square)](https://packagist.org/packages/ravols/laravel-everifin)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/ravols/laravel-everifin/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/ravols/laravel-everifin/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/ravols/laravel-everifin/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/ravols/laravel-everifin/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/ravols/laravel-everifin.svg?style=flat-square)](https://packagist.org/packages/ravols/laravel-everifin)
-
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
-
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/laravel-everifin.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/laravel-everifin)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+This package serves as a Laravel bridge, enabling the seamless creation and management of payments through the Everifin payment gateway. It is built upon the original PHP SDK from Everifin, ensuring robust functionality and compatibility. Check the PHP SDK [here](https://github.com/ravols/everifin-sdk-php).
 
 ## Installation
 
@@ -21,13 +9,6 @@ You can install the package via composer:
 
 ```bash
 composer require ravols/laravel-everifin
-```
-
-You can publish and run the migrations with:
-
-```bash
-php artisan vendor:publish --tag="laravel-everifin-migrations"
-php artisan migrate
 ```
 
 You can publish the config file with:
@@ -40,44 +21,91 @@ This is the contents of the published config file:
 
 ```php
 return [
+    'client_id' => env('EVERIFIN_CLIENT_ID'),
+    'client_secret' => env('EVERIFIN_CLIENT_SECRET'),
+    'client_iban' => env('EVERIFIN_CLIENT_IBAN'),
 ];
 ```
 
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag="laravel-everifin-views"
-```
+You can use this config values when setting up your Config instance.
 
 ## Usage
 
+To begin, you need to create an instance of your Config class. This instance is designed as a singleton, meaning it's only instantiated once during the lifecycle of your application. The reason it's not globally defined in a provided service is to cater for situations where your project supports multiple e-commerce sites and requires dynamic configuration value changes.
+
+In most cases, adhere to the following approach:
+
 ```php
-$laravelEverifin = new Ravols\LaravelEverifin();
-echo $laravelEverifin->echoPhrase('Hello, Ravols!');
+<?php
+use Ravols\EverifinPhp\Config;
+use Ravols\LaravelEverifin\Facades\LaravelEverifinOrders;
+
+class EverifinPaymentProcessor {
+
+    public function __construct()
+    {
+        Config::getInstance()->setClientSecret(config('everifin.client_secret'))->setClientIban(config('everifin.client_iban'))->setClientId(config('everifin.client_id'));
+    }
+
+    public function createPaymentLink(Order $order): string
+    {
+      //Your logic for ecommerce orders
+      $responseData = LaravelEverifinOrders::createPayment(
+            amount: 120.99,
+            currency: 'EUR',
+            redirectUrl: 'https://my-domain/payment/' . $order->number,
+            recipientIban: Config::getInstance()->getClientIban(),
+            message: 'My message',
+            email: $order->user->email,
+            recipientName: 'My company name',
+            variableSymbol: 'Variable symbol', //For non CZ and SK sites use reference field
+        );
+
+        //$responseData contains much more than a link, feel free to check it out
+        return $responseData->link;
+    }
+}
 ```
 
-## Testing
+Once the payment is paid for or cancelled on the payment gateway, customer is redirect back to the redirectUrl that you provided in the createPayment method. Now, you need to retrieve the payment status and handle your order as you wish.
 
-```bash
-composer test
+You can retireve the payment ID as it's always send back to the redirect url as a get parameter ID or store it in a database during payment creation from the $responseData above.
+
+```php
+    use Ravols\LaravelEverifin\Facades\LaravelEverifinPayments;
+    use Ravols\EverifinPhp\Exceptions\ResponseException;
+    //Your logic in class
+
+    //Get payment status
+    try {
+        $paymentStatus = LaravelEverifinPayments::getPayment(paymentId: request()->id);
+    } catch (ResponseException $e) {
+        $errors = collect($e->errors); //Here you can find errors from Everifin gateway in case request fails
+        //Your logic for handling error cases
+    }
+    //Your logic with ifs, switch cases or any other way
+    if($paymentStatus === 'BOOKED')
+    {
+        //Complete order logic
+    }
+
+    if($paymentStatus === 'FAILED')
+    {
+        //Handle error statuses.
+    }
+
 ```
 
-## Changelog
+List of all statuses can be found on the [documentation page](https://everifin.atlassian.net/wiki/spaces/EPAD/pages/2467561491/Paygate+Payment+Flow).
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+List of error codes and their descriptions can be found on the [documentation page](https://everifin.atlassian.net/wiki/spaces/EFMBAPI/pages/2515730751/Errors).
 
-## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
 
 ## Credits
 
 - [Rudolf Bruder](https://github.com/rudolfbruder)
-- [All Contributors](../../contributors)
+- [Jaroslav Štefanec](https://github.com/jaroslavstefanec)
 
 ## License
 
