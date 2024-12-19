@@ -1,4 +1,6 @@
 # Laravel Everifin Payment Gateway
+![image](https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)  ![image](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)
+
 ![image](https://github.com/user-attachments/assets/cbcfec66-b1d6-48c6-81d0-a0eb1ff39406)
 
 This package serves as a Laravel bridge, enabling the seamless creation and management of payments through the Everifin payment gateway. It is built upon the original PHP SDK from Everifin, ensuring robust functionality and compatibility. Check the PHP SDK [here](https://github.com/ravols/everifin-sdk-php).
