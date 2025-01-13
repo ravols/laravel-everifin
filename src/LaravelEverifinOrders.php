@@ -13,7 +13,7 @@ class LaravelEverifinOrders
         string $currency,
         string $redirectUrl,
         string $recipientIban,
-        string $variableSymbol,
+        ?string $variableSymbol,
         string $message,
         string $email,
         ?string $constantSymbol = null,
