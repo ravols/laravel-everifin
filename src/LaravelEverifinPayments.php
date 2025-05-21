@@ -13,4 +13,14 @@ class LaravelEverifinPayments
 
         return $everifinPayment->getPayment(paymentId: $paymentId);
     }
+
+    public function getClientBanks(
+        ?string $countryCode = null,
+    ): array {
+        $everifinPayment = new EverifinPayments;
+
+        $responseData = $everifinPayment->getClientBanks(countryCode: $countryCode);
+
+        return $responseData;
+    }
 }
